@@ -1,4 +1,4 @@
-# ✈️ Sistema de Gestión para Agencia de Viajes (MVC + Java Swing + MySQL)
+# ✈️ Sistema de Gestión para Agencia de Viajes 
 
 ## 📑 1. Introducción y Propósito
 
