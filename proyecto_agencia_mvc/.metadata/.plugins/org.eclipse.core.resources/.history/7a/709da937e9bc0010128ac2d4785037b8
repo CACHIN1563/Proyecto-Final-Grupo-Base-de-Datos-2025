@@ -1,0 +1,378 @@
+package view;
+
+import javax.swing.*;
+import javax.swing.border.*;
+import javax.swing.event.*;
+import javax.swing.table.*;
+import java.awt.*;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.util.List;
+import java.util.Arrays;
+import java.util.regex.Pattern;
+
+import model.vuelo;
+import model.pais;
+import dao.vuelodao;
+import dao.paisdao;
+
+public class VueloForm extends JFrame {
+
+    private final JTextField txtFechaHora = new JTextField(16);
+    private final JComboBox<pais> cbOrigen = new JComboBox<>();
+    private final JComboBox<pais> cbDestino = new JComboBox<>();
+    private final JTextField txtTotales = new JTextField(6);
+    private final JTextField txtTurista = new JTextField(6);
+    private final JTextField txtPrimera = new JTextField(6); 
+    private final JTextField txtPrecioPrimera = new JTextField(6); 
+    private final JTextField txtPrecioTurista = new JTextField(6); 
+
+    private final JButton btnGuardar = new JButton("Guardar");
+    private final JButton btnModificar = new JButton("Modificar");
+    private final JButton btnEliminar = new JButton("Eliminar");
+
+    private final JTextField txtBuscar = new JTextField(20);
+    private final JTable tabla = new JTable();
+    private final DefaultTableModel modelo = new DefaultTableModel(
+            new Object[]{"ID","Salida","Origen","Destino","Total","Turista","Primera", "Precio Turista", "Precio Primera"}, 0
+    ){
+        @Override public boolean isCellEditable(int r,int c){ return false; }
+        @Override public Class<?> getColumnClass(int c){ return c==0?Long.class:String.class; }
+    };
+
+    private TableRowSorter<DefaultTableModel> sorter;
+    private Long seleccionadoId = null;
+    private List<vuelo> listaVuelos;
+
+    private final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+
+    public VueloForm() {
+        setTitle("Información de Vuelos");
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        JPanel content = new JPanel(new BorderLayout(10,10));
+        content.setBorder(new EmptyBorder(12,12,12,12));
+        setContentPane(content);
+
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setBackground(new Color(245,247,250));
+        form.setBorder(new CompoundBorder(
+                new TitledBorder(new LineBorder(new Color(200,205,210)), "Datos del Vuelo"),
+                new EmptyBorder(10,10,10,10)
+        ));
+
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets = new Insets(6,8,6,8);
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.weightx = 1;
+
+        int y = 0;
+        addRow(form, gc, y++, "Fecha-Hora (yyyy-MM-dd HH:mm):", txtFechaHora);
+        addRow(form, gc, y++, "Origen:", cbOrigen);
+        addRow(form, gc, y++, "Destino:", cbDestino);
+        addRow(form, gc, y++, "Plazas Totales:", txtTotales);
+        addRow(form, gc, y++, "Plazas Turista:", txtTurista);
+        addRow(form, gc, y++, "Plazas Primera:", txtPrimera);
+        addRow(form, gc, y++, "Precio Primera:", txtPrecioPrimera);
+        addRow(form, gc, y++, "Precio Turista:", txtPrecioTurista);
+        
+
+        txtPrimera.setEditable(false);
+        txtPrimera.setBackground(new Color(235,235,235));
+
+        JPanel botones = new JPanel(new FlowLayout(FlowLayout.LEFT,8,0));
+        stylePrimary(btnGuardar);
+        stylePrimary(btnModificar);
+        stylePrimary(btnEliminar);
+        botones.add(btnGuardar);
+        botones.add(btnModificar);
+        botones.add(btnEliminar);
+        gc.gridx=0; gc.gridy=y; gc.gridwidth=2;
+        form.add(botones,gc);
+
+        JPanel buscar = new JPanel(new FlowLayout(FlowLayout.LEFT,8,0));
+        buscar.add(new JLabel("Buscar:"));
+        buscar.add(txtBuscar);
+
+        tabla.setModel(modelo);
+        tabla.setRowHeight(22);
+        tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        sorter = new TableRowSorter<>(modelo);
+        tabla.setRowSorter(sorter);
+
+        JScrollPane sp = new JScrollPane(tabla);
+        sp.setPreferredSize(new Dimension(700,260));
+
+        content.add(buscar,BorderLayout.NORTH);
+        content.add(sp,BorderLayout.CENTER);
+        content.add(form,BorderLayout.EAST);
+
+        btnModificar.setEnabled(false);
+        btnEliminar.setEnabled(false);
+
+        configurarEventos();
+        cargarPaises();
+        cargarTabla();
+
+        pack();
+        setResizable(false);
+    }
+
+    private void addRow(JPanel p, GridBagConstraints gc, int y, String label, JComponent field){
+        gc.gridy=y; gc.gridx=0; gc.weightx=0;
+        JLabel lb = new JLabel(label);
+        lb.setForeground(new Color(60,66,72));
+        p.add(lb,gc);
+
+        gc.gridx=1; gc.weightx=1;
+        if (field instanceof JTextField tf) {
+            styleField(tf);
+        }
+        p.add(field,gc);
+    }
+
+    private void styleField(JTextField tf) {
+        tf.setMargin(new Insets(4,8,4,8));
+        tf.setBorder(new CompoundBorder(
+                new LineBorder(new Color(205,210,215), 1, true),
+                new EmptyBorder(2,6,2,6)
+        ));
+        tf.setBackground(Color.WHITE);
+    }
+
+    private void stylePrimary(JButton b) {
+        b.setFocusPainted(false);
+        b.setForeground(Color.BLACK);
+        b.setBackground(new Color(224,224,224));
+        b.setBorder(new EmptyBorder(8,14,8,14));
+
+        b.addChangeListener(e -> {
+            if (b.getModel().isRollover())
+                b.setBackground(new Color(189,189,189));
+            else
+                b.setBackground(new Color(224,224,224));
+        });
+    }
+
+    private void configurarEventos(){
+        tabla.getSelectionModel().addListSelectionListener(e->{
+            if(e.getValueIsAdjusting()) return;
+            int viewRow=tabla.getSelectedRow();
+            if(viewRow>=0 && listaVuelos != null){
+                int modelRow = tabla.convertRowIndexToModel(viewRow);
+                vuelo v = listaVuelos.get(modelRow);
+
+                seleccionadoId = v.getIdVuelo();
+                txtFechaHora.setText(sdf.format(v.getFechaHoraSalida()));
+                txtTotales.setText(String.valueOf(v.getPlazasTotales()));
+                txtTurista.setText(String.valueOf(v.getPlazasTurista()));
+                txtPrimera.setText(String.valueOf(v.getPlazasPrimera()));
+                txtPrecioTurista.setText(String.valueOf(v.getPrecioTurista()));
+                txtPrecioPrimera.setText(String.valueOf(v.getPrecioPrimera()));
+
+                seleccionarPaisEnCombo(cbOrigen, v.getOrigen());
+                seleccionarPaisEnCombo(cbDestino, v.getDestino());
+
+                btnModificar.setEnabled(true);
+                btnEliminar.setEnabled(true);
+            }
+        });
+
+        btnGuardar.addActionListener(e->guardar());
+        btnModificar.addActionListener(e->{ if(seleccionadoId!=null) guardar(); });
+        btnEliminar.addActionListener(e->eliminar());
+
+        txtBuscar.getDocument().addDocumentListener(new DocumentListener(){
+            public void insertUpdate(DocumentEvent e){ filtrar(); }
+            public void removeUpdate(DocumentEvent e){ filtrar(); }
+            public void changedUpdate(DocumentEvent e){ filtrar(); }
+        });
+
+        DocumentListener dl = new DocumentListener() {
+            public void insertUpdate(DocumentEvent e){ recalcPrimera(); }
+            public void removeUpdate(DocumentEvent e){ recalcPrimera(); }
+            public void changedUpdate(DocumentEvent e){ recalcPrimera(); }
+        };
+        txtTotales.getDocument().addDocumentListener(dl);
+        txtTurista.getDocument().addDocumentListener(dl);
+    }
+
+    private void cargarPaises() {
+        try {
+            cbOrigen.removeAllItems();
+            cbDestino.removeAllItems();
+
+            List<pais> lista = new paisdao().listar();
+            for (pais p : lista) {
+                cbOrigen.addItem(p);
+                cbDestino.addItem(p);
+            }
+            if (cbOrigen.getItemCount() > 0) {
+                cbOrigen.setSelectedIndex(0);
+                cbDestino.setSelectedIndex(0);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error cargando países: " + ex.getMessage());
+        }
+    }
+
+    private void filtrar(){
+        String t=txtBuscar.getText().trim();
+        if(t.isEmpty()) {
+            sorter.setRowFilter(null);
+        } else {
+            sorter.setRowFilter(RowFilter.orFilter(Arrays.asList(
+                RowFilter.regexFilter("(?i)"+ Pattern.quote(t),1),
+                RowFilter.regexFilter("(?i)"+ Pattern.quote(t),2),
+                RowFilter.regexFilter("(?i)"+ Pattern.quote(t),3)
+            )));
+        }
+    }
+
+    private void cargarTabla(){
+        try{
+            modelo.setRowCount(0);
+            vuelodao dao = new vuelodao();
+            listaVuelos = dao.listar();
+
+            for(vuelo v : listaVuelos){
+                modelo.addRow(new Object[]{
+                    v.getIdVuelo(),
+                    sdf.format(v.getFechaHoraSalida()),
+                    v.getNombrePaisOrigen(),   
+                    v.getNombrePaisDestino(),  
+                    v.getPlazasTotales(),
+                    v.getPlazasTurista(),
+                    v.getPlazasPrimera()
+                });
+            }
+            limpiarForm();
+        }catch(Exception ex){
+            JOptionPane.showMessageDialog(this,"Error: "+ex.getMessage());
+        }
+    }
+
+    private void limpiarForm(){
+        seleccionadoId=null;
+        txtFechaHora.setText("");
+        txtTotales.setText("");
+        txtTurista.setText("");
+        txtPrimera.setText("");
+        txtPrecioTurista.setText("");
+        txtPrecioPrimera.setText("");
+        cbOrigen.setSelectedIndex(cbOrigen.getItemCount() > 0 ? 0 : -1);
+        cbDestino.setSelectedIndex(cbDestino.getItemCount() > 0 ? 0 : -1);
+        tabla.clearSelection();
+        btnModificar.setEnabled(false);
+        btnEliminar.setEnabled(false);
+    }
+
+    private void recalcPrimera() {
+        try {
+            int tot = txtTotales.getText().isBlank() ? 0 : Integer.parseInt(txtTotales.getText().trim());
+            int tur = txtTurista.getText().isBlank() ? 0 : Integer.parseInt(txtTurista.getText().trim());
+            int pri = tot - tur;
+            if (pri < 0) {
+                txtPrimera.setText("");
+            } else {
+                txtPrimera.setText(String.valueOf(pri));
+            }
+        } catch (NumberFormatException ex) {
+            txtPrimera.setText("");
+        }
+    }
+
+    private void guardar(){
+        try{
+            String fechaTxt = txtFechaHora.getText().trim();
+            if (fechaTxt.isEmpty()) {
+                JOptionPane.showMessageDialog(this,"Ingrese la fecha y hora.");
+                return;
+            }
+            Timestamp ts = new Timestamp(sdf.parse(fechaTxt).getTime());
+
+            pais origen = (pais) cbOrigen.getSelectedItem();
+            pais destino = (pais) cbDestino.getSelectedItem();
+            if (origen == null || destino == null) {
+                JOptionPane.showMessageDialog(this,"Seleccione origen y destino.");
+                return;
+            }
+            if (origen.getid_pais() == destino.getid_pais()) { 
+                JOptionPane.showMessageDialog(this,"Origen y destino deben ser diferentes.");
+                return;
+            }
+
+            int tot = Integer.parseInt(txtTotales.getText().trim());
+            int tur = Integer.parseInt(txtTurista.getText().trim());
+            if (tot < 0 || tur < 0) {
+                JOptionPane.showMessageDialog(this,"Las plazas no pueden ser negativas.");
+                return;
+            }
+            int pri = tot - tur;
+            if (pri < 0) {
+                JOptionPane.showMessageDialog(this,"Turista no puede ser mayor al total de plazas.");
+                return;
+            }
+            
+            double precioTurista = Double.parseDouble(txtPrecioTurista.getText().trim());
+            double precioPrimera = Double.parseDouble(txtPrecioPrimera.getText().trim());
+            if (precioTurista < 0 || precioPrimera < 0) {
+                JOptionPane.showMessageDialog(this, "Los precios no pueden ser negativos.");
+                return;
+            }
+
+            vuelo v = new vuelo();
+            v.setFechaHoraSalida(ts);
+            v.setOrigen(origen.getid_pais());    
+            v.setDestino(destino.getid_pais()); 
+            v.setPlazasTotales(tot);
+            v.setPlazasTurista(tur);
+            v.setPlazasPrimera(pri); 
+            v.setp(precioTurista); 
+            v.setPrecioPrimera(precioPrimera);
+
+            vuelodao dao = new vuelodao();
+
+            if(seleccionadoId==null){
+                dao.insert(v);
+                JOptionPane.showMessageDialog(this,"Vuelo creado correctamente");
+            }else{
+                v.setIdVuelo(seleccionadoId);
+                dao.update(v);
+                JOptionPane.showMessageDialog(this,"Vuelo actualizado correctamente");
+            }
+            cargarTabla();
+        }catch(Exception ex){
+            JOptionPane.showMessageDialog(this,"Error al guardar: "+ex.getMessage());
+        }
+    }
+
+    private void eliminar() {
+        if (seleccionadoId == null) {
+            JOptionPane.showMessageDialog(this, "Seleccione un vuelo para eliminar.");
+            return;
+        }
+        int r = JOptionPane.showConfirmDialog(this, "¿Deseas eliminar el vuelo seleccionado?", "Confirmar", JOptionPane.YES_NO_OPTION);
+        if (r != JOptionPane.YES_OPTION) return;
+
+        try {
+            new vuelodao().delete(seleccionadoId);
+            JOptionPane.showMessageDialog(this, "Vuelo eliminado.");
+            cargarTabla();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error al eliminar: " + ex.getMessage());
+        }
+    }
+
+    private void seleccionarPaisEnCombo(JComboBox<pais> combo, Long idPais) {
+        if (idPais == null) return;
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            pais p = combo.getItemAt(i);
+            if (p.getid_pais() == idPais) {
+                combo.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+}

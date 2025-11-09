@@ -1,0 +1,141 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import java.awt.*;
+import java.sql.Connection;
+import java.text.SimpleDateFormat;
+import java.util.List;
+
+public class HistorialReservasView extends JFrame {
+    private final HistorialReservasDAO dao;
+    private final int idUsuario;
+
+    private JTable tblHospedajes;
+    private JTable tblTickets;
+
+    private final SimpleDateFormat sdfTs = new SimpleDateFormat("yyyy-MM-dd HH:mm");
+    private final SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd");
+
+    public HistorialReservasView(Connection conn, int idUsuario) {
+        super("Historial de Reservas - Usuario " + idUsuario);
+        this.dao = new HistorialReservasDAO(conn);
+        this.idUsuario = idUsuario;
+        initComponents();
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setSize(1000, 600);
+        setLocationRelativeTo(null);
+        loadDataAsync();
+    }
+
+    private void initComponents() {
+        // Modelos de tabla
+        tblHospedajes = new JTable();
+        tblTickets = new JTable();
+
+        DefaultTableModel modelHosp = new DefaultTableModel(new Object[] {
+            "No. Hospedaje", "Reserva", "Hotel", "Tipo Hab (ID)", "Llegada", "Salida", "Habitaciones", "Precio Total"
+        }, 0) {
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+        tblHospedajes.setModel(modelHosp);
+
+        DefaultTableModel modelTick = new DefaultTableModel(new Object[] {
+            "No. Boleto", "Reserva", "No. Vuelo", "Fecha Salida", "Origen", "Destino", "Clase", "Asiento", "Precio"
+        }, 0) {
+            public boolean isCellEditable(int row, int column) { return false; }
+        };
+        tblTickets.setModel(modelTick);
+
+        // Ajustes visuales
+        tblHospedajes.setFillsViewportHeight(true);
+        tblTickets.setFillsViewportHeight(true);
+
+        JScrollPane spLeft = new JScrollPane(tblHospedajes);
+        JScrollPane spRight = new JScrollPane(tblTickets);
+
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, spLeft, spRight);
+        split.setDividerLocation(520);
+        split.setResizeWeight(0.5);
+
+        // Panel superior con botones (refrescar)
+        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JButton btnRefresh = new JButton("Refrescar");
+        btnRefresh.addActionListener(e -> loadDataAsync());
+        topPanel.add(btnRefresh);
+
+        getContentPane().setLayout(new BorderLayout(8, 8));
+        getContentPane().add(topPanel, BorderLayout.NORTH);
+        getContentPane().add(split, BorderLayout.CENTER);
+    }
+
+    private void loadDataAsync() {
+        // Limpia tablas
+        ((DefaultTableModel) tblHospedajes.getModel()).setRowCount(0);
+        ((DefaultTableModel) tblTickets.getModel()).setRowCount(0);
+
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() {
+                try {
+                    List<Hospedaje> hospedajes = dao.obtenerHospedajesPorUsuario(idUsuario);
+                    List<Ticket> tickets = dao.obtenerTicketsPorUsuario(idUsuario);
+
+                    DefaultTableModel mh = (DefaultTableModel) tblHospedajes.getModel();
+                    for (Hospedaje h : hospedajes) {
+                        String llegada = h.getFechaLlegada() != null ? sdfDate.format(h.getFechaLlegada()) : "NULL";
+                        String salida  = h.getFechaSalida()  != null ? sdfDate.format(h.getFechaSalida())  : "NULL";
+
+                        mh.addRow(new Object[] {
+                            h.getIdHospedaje(),
+                            h.getIdReserva(),
+                            h.getHotelNombre(),
+                            h.getIdTipoHabitacion(),
+                            llegada,
+                            salida,
+                            h.getHabitaciones(),
+                            String.format("%.2f", h.getPrecioTotal())
+                        });
+                    }
+
+                    DefaultTableModel mt = (DefaultTableModel) tblTickets.getModel();
+                    for (Ticket t : tickets) {
+                        String fSalida = t.getFechaHoraSalida() != null ? sdfTs.format(t.getFechaHoraSalida()) : "NULL";
+
+                        mt.addRow(new Object[] {
+                            t.getIdTicket(),
+                            t.getIdReserva(),
+                            t.getIdVuelo(),
+                            fSalida,
+                            t.getOrigen(),
+                            t.getDestino(),
+                            t.getClase(),
+                            t.getAsiento() != null ? t.getAsiento() : "NULL",
+                            String.format("%.2f", t.getPrecio())
+                        });
+                    }
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() ->
+                        JOptionPane.showMessageDialog(HistorialReservasView.this,
+                            "Error al cargar datos: " + ex.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE)
+                    );
+                }
+                return null;
+            }
+        };
+        worker.execute();
+    }
+
+    // método main de prueba (ejecutar solo para pruebas)
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            try {
+                Connection conn = ConexionBD.getConnection(); // tu método de conexión
+                int idUsuario = 3; // ajustar al usuario logueado
+                new HistorialReservasView(conn, idUsuario).setVisible(true);
+            } catch (Exception e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "No se pudo conectar: " + e.getMessage());
+            }
+        });
+    }
+}

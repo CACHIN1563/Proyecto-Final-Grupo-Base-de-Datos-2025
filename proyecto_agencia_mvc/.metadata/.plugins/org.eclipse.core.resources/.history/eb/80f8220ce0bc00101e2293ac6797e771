@@ -1,0 +1,92 @@
+package view;
+
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
+import java.util.List;
+
+import model.usuario;
+import model.vuelo;
+import dao.ticketspdao;
+import dao.vuelodao;
+import dao.reservalistadodao; // pequeño DAO para listar reservas del usuario
+
+public class VoletoForm extends JFrame {
+    private final usuario user;
+
+    private final JComboBox<Long> cbReserva = new JComboBox<>();
+    private final JComboBox<vuelo> cbVuelo = new JComboBox<>();
+    private final JComboBox<String> cbClase = new JComboBox<>(new String[]{"TURISTA","PRIMERA"});
+    private final JTextField txtAsiento = new JTextField(8);
+    private final JTextField txtPrecio = new JTextField(10);
+    private final JButton btnAgregar = new JButton("Agregar Ticket");
+
+    public VoletoForm(usuario u) {
+        this.user = u;
+        setTitle("Agregar Ticket a Reserva");
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        JPanel f = new JPanel(new GridBagLayout());
+        f.setBorder(new CompoundBorder(new TitledBorder("Ticket de Vuelo"), new EmptyBorder(10,10,10,10)));
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets=new Insets(6,8,6,8); gc.fill=GridBagConstraints.HORIZONTAL; gc.weightx=1;
+
+        int y=0;
+        addRow(f,gc,y++,"Reserva:", cbReserva);
+        addRow(f,gc,y++,"Vuelo:", cbVuelo);
+        addRow(f,gc,y++,"Clase:", cbClase);
+        addRow(f,gc,y++,"Asiento (opcional):", txtAsiento);
+        addRow(f,gc,y++,"Precio:", txtPrecio);
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        south.add(btnAgregar);
+
+        add(f,BorderLayout.CENTER);
+        add(south,BorderLayout.SOUTH);
+        pack();
+
+        btnAgregar.addActionListener(e -> agregar());
+
+        cargarCombos();
+    }
+
+    private void cargarCombos(){
+        try {
+            // reservas del usuario (solo IDs para elegir)
+            for(Long id : new reservalistadodao().listarIdsPorTurista(user.getIdTurista())){
+                cbReserva.addItem(id);
+            }
+            // vuelos
+            List<vuelo> vuelos = new vuelodao().listar();
+            for(vuelo v : vuelos) cbVuelo.addItem(v);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,"Error cargando combos: "+ex.getMessage());
+        }
+    }
+
+    private void agregar(){
+        try{
+            Long idReserva = (Long) cbReserva.getSelectedItem();
+            vuelo v = (vuelo) cbVuelo.getSelectedItem();
+            if (idReserva == null || v == null) { JOptionPane.showMessageDialog(this,"Seleccione reserva y vuelo."); return; }
+
+            String clase = (String) cbClase.getSelectedItem();
+            String asiento = txtAsiento.getText().trim();
+            double precio = Double.parseDouble(txtPrecio.getText().trim());
+
+            new ticketspdao().agregarTicket(idReserva, v.getIdVuelo(), clase, asiento, precio);
+            JOptionPane.showMessageDialog(this,"Ticket agregado.");
+            dispose();
+        }catch(Exception ex){
+            JOptionPane.showMessageDialog(this,"Error: "+ex.getMessage());
+        }
+    }
+
+    private void addRow(JPanel p, GridBagConstraints gc, int y, String label, JComponent c){
+        gc.gridy=y; gc.gridx=0; gc.weightx=0; p.add(new JLabel(label),gc);
+        gc.gridx=1; gc.weightx=1; p.add(c,gc);
+    }
+
+    @Override public String toString(){ return super.toString(); }
+}

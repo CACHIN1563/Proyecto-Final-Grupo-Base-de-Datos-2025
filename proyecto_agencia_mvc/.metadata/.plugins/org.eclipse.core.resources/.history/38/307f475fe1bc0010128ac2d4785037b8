@@ -1,0 +1,102 @@
+package dao;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import model.vuelo;
+import util.DB;
+
+public class vuelodao {
+
+    public void insert(vuelo v) throws Exception {
+        String sql = "INSERT INTO vuelo " +
+                     "(fecha_hora_salida, origen, destino, plazas_totales, plazas_turista) " +
+                     "VALUES (?, ?, ?, ?, ?)";
+
+        try (Connection c = DB.get();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setTimestamp(1, v.getFechaHoraSalida());
+            ps.setLong(2, v.getOrigen());  
+            ps.setLong(3, v.getDestino()); 
+            ps.setInt(4, v.getPlazasTotales());
+            ps.setInt(5, v.getPlazasTurista());
+
+            ps.executeUpdate();
+        }
+    }
+
+    public void update(vuelo v) throws Exception {
+        String sql = "UPDATE vuelo SET " +
+                     "fecha_hora_salida = ?, " +
+                     "origen = ?, " +
+                     "destino = ?, " +
+                     "plazas_totales = ?, " +
+                     "plazas_turista = ? " +
+                     "WHERE id_vuelo = ?";
+
+        try (Connection c = DB.get();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setTimestamp(1, v.getFechaHoraSalida());
+            ps.setLong(2, v.getOrigen());
+            ps.setLong(3, v.getDestino());
+            ps.setInt(4, v.getPlazasTotales());
+            ps.setInt(5, v.getPlazasTurista());
+            ps.setLong(6, v.getIdVuelo());
+
+            ps.executeUpdate();
+        }
+    }
+
+    public void delete(Long id) throws Exception {
+        String sql = "DELETE FROM vuelo WHERE id_vuelo = ?";
+        try (Connection c = DB.get();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setLong(1, id);
+            ps.executeUpdate();
+        }
+    }
+
+    public List<vuelo> listar() throws Exception {
+        List<vuelo> lista = new ArrayList<>();
+
+        String sql =
+            "SELECT v.id_vuelo, " +
+            "       v.fecha_hora_salida, " +
+            "       v.origen, " +            
+            "       v.destino, " +         
+            "       v.plazas_totales, " +
+            "       v.plazas_turista, " +
+            "       v.plazas_primera, " +    
+            "       po.nombre AS pais_origen, " +
+            "       pd.nombre AS pais_destino " +
+            "FROM vuelo v " +
+            "JOIN pais po ON v.origen  = po.id_pais " +
+            "JOIN pais pd ON v.destino = pd.id_pais " +
+            "ORDER BY v.fecha_hora_salida";
+
+        try (Connection c = DB.get();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                vuelo v = new vuelo();
+                v.setIdVuelo(rs.getLong("id_vuelo"));
+                v.setFechaHoraSalida(rs.getTimestamp("fecha_hora_salida"));
+                v.setOrigen(rs.getLong("origen"));           
+                v.setDestino(rs.getLong("destino"));        
+                v.setPlazasTotales(rs.getInt("plazas_totales"));
+                v.setPlazasTurista(rs.getInt("plazas_turista"));
+                v.setPlazasPrimera(rs.getInt("plazas_primera")); 
+                v.setNombrePaisOrigen(rs.getString("pais_origen"));
+                v.setNombrePaisDestino(rs.getString("pais_destino"));
+
+                lista.add(v);
+            }
+        }
+
+        return lista;
+    }
+}

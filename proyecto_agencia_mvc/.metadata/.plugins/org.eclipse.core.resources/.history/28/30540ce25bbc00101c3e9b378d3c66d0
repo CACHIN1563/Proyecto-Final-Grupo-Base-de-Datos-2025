@@ -1,0 +1,68 @@
+package dao;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import model.hotel;
+import util.DB;
+
+public class hoteldao {
+
+    public void insert(hotel h) throws Exception {
+        String sql = "INSERT INTO hotel (nombre, direccion, ciudad, telefono, plazas_disponibles) VALUES (?, ?, ?, ?, ?)";
+        try (Connection c = DB.get();
+            PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setString(1, h.getnombre());
+            ps.setString(2, h.getdireccion());
+            ps.setString(3, h.getciudad());
+            ps.setString(4, h.gettelefono());
+            ps.executeUpdate();
+        }
+    }
+
+    public void update(hotel h) throws Exception {
+        String sql = "UPDATE hotel SET nombre=?, direccion=?, ciudad=?, telefono=? WHERE id_hotel=?";
+        try (Connection c = DB.get();
+            PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setString(1, h.getnombre());
+            ps.setString(2, h.getdireccion());
+            ps.setString(3, h.getciudad());
+            ps.setString(4, h.gettelefono());
+            ps.setLong(6, h.getid_hotel());
+            ps.executeUpdate();
+        }
+    }
+
+    public void delete(Long id) throws Exception {
+        String sql = "DELETE FROM hotel WHERE id_hotel=?";
+        try (Connection c = DB.get();
+            PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setLong(1, id);
+            ps.executeUpdate();
+        }
+    }
+
+    public List<hotel> listar() throws Exception {
+        List<hotel> lista = new ArrayList<>();
+        String sql = "SELECT id_hotel, nombre, direccion, ciudad, telefono, plazas_disponibles FROM hotel ORDER BY nombre";
+
+        try (Connection c = DB.get();
+            PreparedStatement ps = c.prepareStatement(sql);
+            ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                hotel h = new hotel();
+                h.setid_hotel(rs.getLong("id_hotel"));
+                h.setnombre(rs.getString("nombre"));
+                h.setdireccion(rs.getString("direccion"));
+                h.setciudad(rs.getString("ciudad"));
+                h.settelefono(rs.getString("telefono"));
+                lista.add(h);
+            }
+        }
+        return lista;
+    }
+}

@@ -1,0 +1,108 @@
+package model;
+
+import java.sql.Timestamp;
+
+public class vuelo {
+
+    private Long idVuelo;
+    private Timestamp fechaHoraSalida;
+    private Long origen;   
+    private Long destino; 
+    private Integer plazasTotales;
+    private Integer plazasTurista;
+    private Integer plazasPrimera; 
+    private String nombrePaisOrigen;
+    private String nombrePaisDestino;
+    private Double precioprimera ;
+    private Double precioturista  ;
+
+    public vuelo() {}
+
+    public Long getIdVuelo() {
+        return idVuelo;
+    }
+
+    public void setIdVuelo(Long idVuelo) {
+        this.idVuelo = idVuelo;
+    }
+
+    public Timestamp getFechaHoraSalida() {
+        return fechaHoraSalida;
+    }
+
+    public void setFechaHoraSalida(Timestamp fechaHoraSalida) {
+        this.fechaHoraSalida = fechaHoraSalida;
+    }
+
+    public Long getOrigen() {
+        return origen;
+    }
+
+    public void setOrigen(Long origen) {
+        this.origen = origen;
+    }
+
+    public Long getDestino() {
+        return destino;
+    }
+
+    public void setDestino(Long destino) {
+        this.destino = destino;
+    }
+
+    public Integer getPlazasTotales() {
+        return plazasTotales;
+    }
+
+    public void setPlazasTotales(Integer plazasTotales) {
+        this.plazasTotales = plazasTotales;
+    }
+
+    public Integer getPlazasTurista() {
+        return plazasTurista;
+    }
+
+    public void setPlazasTurista(Integer plazasTurista) {
+        this.plazasTurista = plazasTurista;
+    }
+
+    public Integer getPlazasPrimera() {
+        return plazasPrimera;
+    }
+
+    public void setPlazasPrimera(Integer plazasPrimera) {
+        this.plazasPrimera = plazasPrimera;
+    }
+
+    public String getNombrePaisOrigen() {
+        return nombrePaisOrigen;
+    }
+
+    public void setNombrePaisOrigen(String nombrePaisOrigen) {
+        this.nombrePaisOrigen = nombrePaisOrigen;
+    }
+
+    public Double getPrecioPrimera() {
+        return precioprimera;
+    }
+
+    public void setPrecioPrimera(Double precioprimera) {
+        this.precioprimera = precioprimera;
+    }
+    
+    public Double getPrecioTurista() {
+        return precioturista;
+    }
+
+    public void setPrecioTurista(Double precioturista) {
+        this.precioturista = precioturista;
+    }
+    
+    public String getNombrePaisDestino() {
+        return nombrePaisDestino;
+    }
+
+    public void setNombrePaisDestino(String nombrePaisDestino) {
+        this.nombrePaisDestino = nombrePaisDestino;
+    }
+}

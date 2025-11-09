@@ -1,0 +1,167 @@
+package view;
+
+import javax.swing.*;
+import javax.swing.border.*;
+import java.awt.*;
+import java.util.List;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+
+import model.usuario;
+import model.vuelo;
+import dao.ticketspdao;
+import dao.vuelodao;
+import dao.reservalistadodao;
+
+public class BoletoForm extends JFrame {
+    private final usuario user;
+
+    private final JComboBox<Long> cbReserva = new JComboBox<>();
+    private final JComboBox<String> cbClase = new JComboBox<>(new String[]{"TURISTA","PRIMERA"});
+    private final JTextField txtVueloId = new JTextField(8);
+    private final JTextField txtAsiento = new JTextField(8);
+    private final JTextField txtPrecio = new JTextField(10);
+    private final JButton btnAgregar = new JButton("Agregar Ticket");
+
+    private JTable tablaVuelos;
+    private DefaultTableModel modeloVuelos;
+    private List<vuelo> listaVuelos; 
+
+    public BoletoForm(usuario u) {
+        this.user = u;
+        setTitle("Boletos por Vuelos");
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setSize(950, 500);
+        setLocationRelativeTo(null);
+
+        JPanel panelIzquierdo = crearPanelVuelos();
+        JPanel panelDerecho = crearPanelFormulario();
+
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, panelIzquierdo, panelDerecho);
+        splitPane.setDividerLocation(550);
+        splitPane.setResizeWeight(0.6);
+
+        add(splitPane, BorderLayout.CENTER);
+        cargarCombos();
+        cargarTablaVuelos();
+    }
+
+    private JPanel crearPanelVuelos() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(new CompoundBorder(new TitledBorder("Listado de Vuelos"), new EmptyBorder(5,5,5,5)));
+
+        String[] columnas = {"ID", "N° Vuelo", "Fecha", "Hora", "Origen", "Destino", "Totales", "Turista", "Primera"};
+        modeloVuelos = new DefaultTableModel(columnas, 0);
+        tablaVuelos = new JTable(modeloVuelos);
+        tablaVuelos.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+
+        tablaVuelos.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent e) {
+                if (!e.getValueIsAdjusting() && tablaVuelos.getSelectedRow() != -1) {
+                    int fila = tablaVuelos.getSelectedRow();
+                    String idVuelo = tablaVuelos.getValueAt(fila, 0).toString();
+                    txtVueloId.setText(idVuelo);
+                }
+            }
+        });
+
+        panel.add(new JScrollPane(tablaVuelos), BorderLayout.CENTER);
+        return panel;
+    }
+
+    private JPanel crearPanelFormulario() {
+        JPanel f = new JPanel(new GridBagLayout());
+        f.setBorder(new CompoundBorder(new TitledBorder("Reservación de Boletos"), new EmptyBorder(10,10,10,10)));
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets = new Insets(6,8,6,8);
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.weightx = 1;
+
+        int y = 0;
+        addRow(f, gc, y++, "Reserva:", cbReserva);
+        addRow(f, gc, y++, "Vuelo (ID):", txtVueloId);
+        addRow(f, gc, y++, "Clase:", cbClase);
+        addRow(f, gc, y++, "Asiento (opcional):", txtAsiento);
+        addRow(f, gc, y++, "Precio:", txtPrecio);
+
+        txtVueloId.setEditable(false);
+        txtVueloId.setBackground(new Color(240, 240, 240));
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        south.add(btnAgregar);
+
+        JPanel container = new JPanel(new BorderLayout());
+        container.add(f, BorderLayout.CENTER);
+        container.add(south, BorderLayout.SOUTH);
+
+        btnAgregar.addActionListener(e -> agregar());
+        return container;
+    }
+
+    private void cargarCombos(){
+        try {
+            for(Long id : new reservalistadodao().listarIdsPorTurista(user.getIdTurista())) {
+                cbReserva.addItem(id);
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error cargando reservas: " + ex.getMessage());
+        }
+    }
+
+    private void cargarTablaVuelos() {
+        try {
+            modeloVuelos.setRowCount(0);
+            List<vuelo> vuelos = new vuelodao().listar();
+            for (vuelo v : vuelos) {
+                Object[] fila = {
+                    v.getIdVuelo(),
+                    v.getFechaHoraSalida(),
+                    v.getOrigen(),
+                    v.getDestino(),
+                    v.getPlazasTotales(),
+                    v.getPlazasTurista(),
+                    v.getPlazasPrimera()
+                };
+                modeloVuelos.addRow(fila);
+            }
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Error cargando vuelos: " + e.getMessage());
+        }
+    }
+
+    private void agregar(){
+        try {
+            Long idReserva = (Long) cbReserva.getSelectedItem();
+            String idVueloTxt = txtVueloId.getText().trim();
+
+            if (idReserva == null || idVueloTxt.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Seleccione una reserva y un vuelo.");
+                return;
+            }
+
+            long idVuelo = Long.parseLong(idVueloTxt);
+            String clase = (String) cbClase.getSelectedItem();
+            String asiento = txtAsiento.getText().trim();
+            double precio = Double.parseDouble(txtPrecio.getText().trim());
+
+            new ticketspdao().agregarTicket(idReserva, idVuelo, clase, asiento, precio);
+            JOptionPane.showMessageDialog(this, "Ticket agregado correctamente.");
+            dispose();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+        }
+    }
+
+    private void addRow(JPanel p, GridBagConstraints gc, int y, String label, JComponent c){
+        gc.gridy = y;
+        gc.gridx = 0;
+        gc.weightx = 0;
+        p.add(new JLabel(label), gc);
+        gc.gridx = 1;
+        gc.weightx = 1;
+        p.add(c, gc);
+    }
+}
+

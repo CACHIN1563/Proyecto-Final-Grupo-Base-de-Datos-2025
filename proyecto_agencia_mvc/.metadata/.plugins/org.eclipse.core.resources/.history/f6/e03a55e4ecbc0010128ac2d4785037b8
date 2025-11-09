@@ -1,0 +1,37 @@
+package view;
+
+import javax.swing.*;
+import java.awt.*;
+import model.usuario;
+
+public class ClienteMenuView extends JFrame {
+    private final usuario user;
+
+    private final JButton btnNuevaReserva   = new JButton("Nueva Reserva");
+    private final JButton btnAgregarTicket  = new JButton("Agregar Voletos a Reserva");
+    private final JButton btnAgregarHotel   = new JButton("Agregar Hospedaje a Reserva");
+    private final JButton btnMisReservas    = new JButton("Mis Reservas");
+
+    public ClienteMenuView(usuario u) {
+        this.user = u;
+
+        setTitle("Menú del Cliente");
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+
+        JPanel grid = new JPanel(new GridLayout(2,2,12,12));
+        for (JButton b : new JButton[]{btnNuevaReserva, btnAgregarTicket, btnAgregarHotel, btnMisReservas}) {
+            b.setFocusPainted(false);
+            b.setBackground(new Color(224,224,224));
+            b.setForeground(Color.BLACK);
+            grid.add(b);
+        }
+        add(new JLabel("¿Qué deseas hacer hoy?", SwingConstants.CENTER), BorderLayout.NORTH);
+        add(grid, BorderLayout.CENTER);
+        setSize(520, 260);
+
+        btnNuevaReserva.addActionListener(e -> new NuevaReservaForm(user).setVisible(true));
+        btnAgregarTicket.addActionListener(e -> new BoletoForm(user).setVisible(true));
+        btnAgregarHotel.addActionListener(e -> new HospedajeForm(user).setVisible(true));
+    }
+}

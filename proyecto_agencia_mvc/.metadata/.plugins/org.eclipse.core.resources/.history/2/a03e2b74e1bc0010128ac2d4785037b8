@@ -1,0 +1,62 @@
+package dao;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import model.vuelo;
+import util.DB;
+
+public class vuelodao {
+
+    public void insert(vuelo v) throws Exception {
+        String sql = "INSERT INTO vuelo " +
+                     "(fecha_hora_salida, origen, destino, plazas_totales, plazas_turista) " +
+                     "VALUES (?, ?, ?, ?, ?)";
+
+        try (Connection c = DB.get();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setTimestamp(1, v.getFechaHoraSalida());
+            ps.setLong(2, v.getOrigen());  
+            ps.setLong(3, v.getDestino()); 
+            ps.setInt(4, v.getPlazasTotales());
+            ps.setInt(5, v.getPlazasTurista());
+
+            ps.executeUpdate();
+        }
+    }
+
+    public void update(vuelo v) throws Exception {
+        String sql = "UPDATE vuelo SET " +
+                     "fecha_hora_salida = ?, " +
+                     "origen = ?, " +
+                     "destino = ?, " +
+                     "plazas_totales = ?, " +
+                     "plazas_turista = ? " +
+                     "WHERE id_vuelo = ?";
+
+        try (Connection c = DB.get();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setTimestamp(1, v.getFechaHoraSalida());
+            ps.setLong(2, v.getOrigen());
+            ps.setLong(3, v.getDestino());
+            ps.setInt(4, v.getPlazasTotales());
+            ps.setInt(5, v.getPlazasTurista());
+            ps.setLong(6, v.getIdVuelo());
+
+            ps.executeUpdate();
+        }
+    }
+
+    public void delete(Long id) throws Exception {
+        String sql = "DELETE FROM vuelo WHERE id_vuelo = ?";
+        try (Connection c = DB.get();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setLong(1, id);
+            ps.executeUpdate();
+        }
+    }
+
+}
